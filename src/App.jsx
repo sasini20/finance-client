@@ -299,7 +299,7 @@ function App() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 'bold', margin: 0, color: '#38bdf8' }}>
-              AI Finance Tracker 💡
+              AI Finance Tracker 
             </h1>
             <p style={{ color: '#94a3b8', margin: '5px 0 0 0', fontSize: '0.9rem' }}>Logged in as: {localStorage.getItem('email')}</p>
           </div>
