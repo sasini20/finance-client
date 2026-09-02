@@ -1,19 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { PlusCircle, Trash2, DollarSign, TrendingUp, TrendingDown, Sparkles, PieChart as PieIcon, Download, Filter } from 'lucide-react';
+import { PlusCircle, Trash2, DollarSign, TrendingUp, TrendingDown, Sparkles, PieChart as PieIcon, Download, Filter, LogOut } from 'lucide-react';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import API from './api/axios';
+import Auth from './components/Auth';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
-// Create an Axios instance with dynamic Base URL (reads VITE_API_URL from Vercel)
-const API = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-});
-
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -25,18 +23,31 @@ function App() {
   const [selectedMonth, setSelectedMonth] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
 
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      setIsAuthenticated(true);
+      fetchTransactions();
+    }
+  }, []);
+
   const fetchTransactions = async () => {
     try {
       const res = await API.get('/transactions');
       setTransactions(res.data);
     } catch (err) {
       console.error('Error fetching transactions:', err);
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        handleLogout();
+      }
     }
   };
 
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
+  const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('email');
+    setIsAuthenticated(false);
+  };
 
   // AI Auto-detect
   const handleAiCategorize = async () => {
@@ -117,15 +128,13 @@ function App() {
     return matchesCategory;
   });
 
-  // Export to PDF function (Professional with Header Fix & Category Summary Table)
+  // Export to PDF function
   const exportPDF = () => {
     const doc = new jsPDF();
 
-    // 1. Top Banner Background
     doc.setFillColor(15, 23, 42); 
     doc.rect(0, 0, 210, 35, 'F');
 
-    // 2. Header Title
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(20);
     doc.setFont('helvetica', 'bold');
@@ -136,7 +145,6 @@ function App() {
     doc.setTextColor(148, 163, 184);
     doc.text(`Generated: ${new Date().toLocaleDateString()}`, 196, 22, { align: 'right' });
 
-    // 3. Summary Section Box
     doc.setFillColor(241, 245, 249); 
     doc.roundedRect(14, 43, 182, 22, 3, 3, 'F');
 
@@ -157,7 +165,6 @@ function App() {
     doc.setTextColor(239, 68, 68); 
     doc.text(`LKR ${totalExpense.toLocaleString()}`, 146, 58);
 
-    // 4. Category-wise Totals Summary Table in PDF
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42);
     doc.text('Category-wise Expense Summary', 14, 75);
@@ -172,16 +179,11 @@ function App() {
       head: [['Category', 'Total Expense (LKR)']],
       body: catSummaryRows,
       theme: 'grid',
-      headStyles: { 
-        fillColor: [30, 41, 59], 
-        textColor: [255, 255, 255],
-        fontStyle: 'bold'
-      },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
       styles: { fontSize: 9, cellPadding: 3 },
       tableWidth: 100
     });
 
-    // 5. Transaction History Table
     const finalY = doc.lastAutoTable.finalY + 12;
     doc.setFontSize(12);
     doc.setTextColor(15, 23, 42);
@@ -191,14 +193,13 @@ function App() {
     const tableRows = [];
 
     filteredTransactions.forEach(t => {
-      const tData = [
+      tableRows.push([
         t.title,
         t.category,
         t.type.toUpperCase(),
         `${t.type === 'income' ? '+' : '-'} LKR ${t.amount.toLocaleString()}`,
         new Date(t.date).toLocaleDateString()
-      ];
-      tableRows.push(tData);
+      ]);
     });
 
     autoTable(doc, {
@@ -206,32 +207,15 @@ function App() {
       head: [tableColumn],
       body: tableRows,
       theme: 'striped',
-      headStyles: { 
-        fillColor: [30, 41, 59], 
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-      },
-      bodyStyles: { 
-        textColor: [51, 65, 85],
-        fontSize: 9
-      },
-      alternateRowStyles: {
-        fillColor: [248, 250, 252]
-      },
-      columnStyles: {
-        3: { fontStyle: 'bold' }
-      },
-      didDrawPage: (data) => {
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text('AI Finance Tracker - Confidential Financial Report', 14, 287);
-      }
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+      bodyStyles: { textColor: [51, 65, 85], fontSize: 9 },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 3: { fontStyle: 'bold' } }
     });
 
     doc.save('finance-report.pdf');
   };
 
-  // Get unique months for filter dropdown
   const uniqueMonths = [...new Set(transactions.map(t => {
     const d = new Date(t.date);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -239,24 +223,36 @@ function App() {
 
   const uniqueCategories = [...new Set(transactions.map(t => t.category))];
 
+  if (!isAuthenticated) {
+    return <Auth onLoginSuccess={() => { setIsAuthenticated(true); fetchTransactions(); }} />;
+  }
+
   return (
     <div style={{ minHeight: '100vh', background: '#0f172a', color: '#f8fafc', fontFamily: 'Inter, sans-serif', padding: '30px 20px' }}>
       <div style={{ maxWidth: '950px', margin: '0 auto' }}>
         
-        {/* Header */}
+        {/* Header with Logout */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', flexWrap: 'wrap', gap: '15px', paddingTop: '10px' }}>
           <div>
             <h1 style={{ fontSize: '2.2rem', fontWeight: 'bold', margin: 0, lineHeight: '1.3', background: 'linear-gradient(to right, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
               AI Finance Tracker 💡
             </h1>
-            <p style={{ color: '#94a3b8', margin: '5px 0 0 0' }}>Intelligent wealth management & analytics</p>
+            <p style={{ color: '#94a3b8', margin: '5px 0 0 0' }}>Logged in as: {localStorage.getItem('email')}</p>
           </div>
-          <button 
-            onClick={exportPDF}
-            style={{ background: 'linear-gradient(to right, #38bdf8, #6366f1)', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.95rem', boxShadow: '0 4px 12px rgba(56, 189, 248, 0.3)', transition: '0.2s' }}
-          >
-            <Download size={18} /> Export PDF Report
-          </button>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button 
+              onClick={exportPDF}
+              style={{ background: 'linear-gradient(to right, #38bdf8, #6366f1)', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}
+            >
+              <Download size={16} /> Export PDF
+            </button>
+            <button 
+              onClick={handleLogout}
+              style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '10px 18px', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}
+            >
+              <LogOut size={16} /> Logout
+            </button>
+          </div>
         </div>
 
         {/* Filters Bar */}
@@ -294,15 +290,15 @@ function App() {
 
         {/* Summary Cards */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px', marginBottom: '30px' }}>
-          <div style={{ background: '#1e293b', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #38bdf8', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+          <div style={{ background: '#1e293b', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #38bdf8' }}>
             <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>Net Balance</p>
             <h3 style={{ fontSize: '1.8rem', margin: '5px 0 0 0' }}>LKR {balance.toLocaleString()}</h3>
           </div>
-          <div style={{ background: '#1e293b', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #22c55e', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+          <div style={{ background: '#1e293b', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #22c55e' }}>
             <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>Total Income</p>
             <h3 style={{ fontSize: '1.8rem', margin: '5px 0 0 0', color: '#22c55e' }}>LKR {totalIncome.toLocaleString()}</h3>
           </div>
-          <div style={{ background: '#1e293b', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #ef4444', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+          <div style={{ background: '#1e293b', padding: '20px', borderRadius: '12px', borderLeft: '5px solid #ef4444' }}>
             <p style={{ color: '#94a3b8', margin: 0, fontSize: '0.9rem' }}>Total Expense</p>
             <h3 style={{ fontSize: '1.8rem', margin: '5px 0 0 0', color: '#ef4444' }}>LKR {totalExpense.toLocaleString()}</h3>
           </div>
@@ -312,7 +308,7 @@ function App() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px', marginBottom: '30px' }}>
           
           {/* Form */}
-          <form onSubmit={handleSubmit} style={{ background: '#1e293b', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+          <form onSubmit={handleSubmit} style={{ background: '#1e293b', padding: '25px', borderRadius: '16px' }}>
             <h3 style={{ marginTop: 0, marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <PlusCircle color="#38bdf8" /> Add Transaction
             </h3>
@@ -331,7 +327,6 @@ function App() {
                 <button 
                   type="button" 
                   onClick={handleAiCategorize} 
-                  title="Auto-detect with AI"
                   style={{ background: '#6366f1', color: '#fff', border: 'none', padding: '0 15px', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 'bold' }}
                 >
                   <Sparkles size={16} /> {loadingAi ? 'AI...' : 'AI Fill'}
@@ -380,8 +375,8 @@ function App() {
             </button>
           </form>
 
-          {/* Chart Section - Large Pie Chart */}
-          <div style={{ background: '#1e293b', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-start' }}>
+          {/* Chart Section */}
+          <div style={{ background: '#1e293b', padding: '25px', borderRadius: '16px' }}>
             <h3 style={{ marginTop: 0, marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <PieIcon color="#38bdf8" /> Expense Breakdown
             </h3>
@@ -390,13 +385,9 @@ function App() {
               <p style={{ color: '#94a3b8', textAlign: 'center', marginTop: '50px' }}>No expense data available for filter.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                
-                {/* Larger Pie Chart */}
                 <div style={{ width: '170px', height: '170px', margin: '0 auto', marginBottom: '5px' }}>
                   <Pie data={chartData} options={{ plugins: { legend: { display: false } } }} />
                 </div>
-
-                {/* Progress Bars for each Category */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {Object.entries(expenseCategories).map(([cat, amt], index) => {
                     const colors = ['#38bdf8', '#818cf8', '#f43f5e', '#22c55e', '#eab308', '#a855f7'];
@@ -415,7 +406,6 @@ function App() {
                             <span style={{ fontWeight: 'bold', color: '#38bdf8' }}>LKR {amt.toLocaleString()}</span>
                           </div>
                         </div>
-                        {/* Progress Bar Track */}
                         <div style={{ width: '100%', height: '5px', background: '#334155', borderRadius: '3px', overflow: 'hidden' }}>
                           <div style={{ width: `${percentage}%`, height: '100%', backgroundColor: colorCode, borderRadius: '3px' }}></div>
                         </div>
@@ -423,15 +413,13 @@ function App() {
                     );
                   })}
                 </div>
-
               </div>
             )}
           </div>
-
         </div>
 
         {/* Transactions History */}
-        <div style={{ background: '#1e293b', padding: '25px', borderRadius: '16px', boxShadow: '0 4px 6px rgba(0,0,0,0.3)' }}>
+        <div style={{ background: '#1e293b', padding: '25px', borderRadius: '16px' }}>
           <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Transaction History</h3>
           {filteredTransactions.length === 0 ? (
             <p style={{ color: '#94a3b8' }}>No transactions found matching filters.</p>
