@@ -8,6 +8,11 @@ import autoTable from 'jspdf-autotable';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
+// Create an Axios instance with dynamic Base URL (reads VITE_API_URL from Vercel)
+const API = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+});
+
 function App() {
   const [transactions, setTransactions] = useState([]);
   const [title, setTitle] = useState('');
@@ -22,7 +27,7 @@ function App() {
 
   const fetchTransactions = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/transactions');
+      const res = await API.get('/transactions');
       setTransactions(res.data);
     } catch (err) {
       console.error('Error fetching transactions:', err);
@@ -41,7 +46,7 @@ function App() {
     }
     try {
       setLoadingAi(true);
-      const res = await axios.post('http://localhost:5000/api/ai-categorize', { title });
+      const res = await API.post('/ai-categorize', { title });
       if (res.data.category) setCategory(res.data.category);
       if (res.data.type) setType(res.data.type);
     } catch (err) {
@@ -59,7 +64,7 @@ function App() {
 
     try {
       const newTx = { title, amount: Number(amount), category: formattedCategory, type };
-      await axios.post('http://localhost:5000/api/transactions', newTx);
+      await API.post('/transactions', newTx);
       setTitle('');
       setAmount('');
       setCategory('');
@@ -71,7 +76,7 @@ function App() {
 
   const handleDelete = async (id) => {
     try {
-      await axios.delete(`http://localhost:5000/api/transactions/${id}`);
+      await API.delete(`/transactions/${id}`);
       fetchTransactions();
     } catch (err) {
       console.error('Error deleting transaction:', err);
@@ -168,7 +173,7 @@ function App() {
       body: catSummaryRows,
       theme: 'grid',
       headStyles: { 
-        fillColor: [30, 41, 59], // Dark slate header
+        fillColor: [30, 41, 59], 
         textColor: [255, 255, 255],
         fontStyle: 'bold'
       },
@@ -202,7 +207,7 @@ function App() {
       body: tableRows,
       theme: 'striped',
       headStyles: { 
-        fillColor: [30, 41, 59], // Dark slate header (#1e293b) so white text is clearly visible
+        fillColor: [30, 41, 59], 
         textColor: [255, 255, 255],
         fontStyle: 'bold',
       },
