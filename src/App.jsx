@@ -298,7 +298,7 @@ function App() {
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px', flexWrap: 'wrap', gap: '15px' }}>
           <div>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 'bold', margin: 0, background: 'linear-gradient(to right, #38bdf8, #818cf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 'bold', margin: 0, color: '#38bdf8' }}>
               AI Finance Tracker 💡
             </h1>
             <p style={{ color: '#94a3b8', margin: '5px 0 0 0', fontSize: '0.9rem' }}>Logged in as: {localStorage.getItem('email')}</p>
@@ -407,7 +407,7 @@ function App() {
             </button>
           </form>
 
-          {/* Chart Section */}
+          {/* Chart Section - Responsive */}
           <div style={{ background: '#1e293b', padding: '25px', borderRadius: '16px' }}>
             <h3 style={{ marginTop: 0, marginBottom: '15px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <PieIcon color="#38bdf8" /> Expense Breakdown
@@ -416,9 +416,12 @@ function App() {
               <p style={{ color: '#94a3b8', textAlign: 'center', marginTop: '50px' }}>No expense data available for filter.</p>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-                <div style={{ width: '170px', height: '170px', margin: '0 auto', marginBottom: '5px' }}>
-                  <Pie data={chartData} options={{ plugins: { legend: { display: false } } }} />
+                
+                {/* Responsive Pie Chart Container */}
+                <div style={{ width: '100%', maxWidth: '200px', height: '200px', margin: '0 auto', marginBottom: '5px' }}>
+                  <Pie data={chartData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
                 </div>
+
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '180px', overflowY: 'auto' }}>
                   {Object.entries(expenseCategories).map(([cat, amt], index) => {
                     const colors = ['#38bdf8', '#818cf8', '#f43f5e', '#22c55e', '#eab308', '#a855f7'];
@@ -442,7 +445,7 @@ function App() {
           </div>
         </div>
 
-        {/* Transactions History */}
+        {/* Transactions History - Responsive */}
         <div style={{ background: '#1e293b', padding: '25px', borderRadius: '16px' }}>
           <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Transaction History</h3>
           {filteredTransactions.length === 0 ? (
@@ -451,16 +454,16 @@ function App() {
             <>
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {currentTransactions.map((t) => (
-                  <li key={t._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', marginBottom: '10px', background: '#0f172a', borderRadius: '10px', border: '1px solid #334155' }}>
-                    <div>
-                      <strong style={{ fontSize: '1.05rem' }}>{t.title}</strong>
-                      <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '3px' }}>
-                        <span style={{ background: '#334155', padding: '2px 8px', borderRadius: '4px', marginRight: '8px' }}>{t.category}</span>
+                  <li key={t._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 15px', marginBottom: '10px', background: '#0f172a', borderRadius: '10px', border: '1px solid #334155', flexWrap: 'wrap', gap: '10px' }}>
+                    <div style={{ flex: '1 1 200px' }}>
+                      <strong style={{ fontSize: '1rem', wordBreak: 'break-word' }}>{t.title}</strong>
+                      <div style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '3px', display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ background: '#334155', padding: '2px 8px', borderRadius: '4px' }}>{t.category}</span>
                         <span>{new Date(t.date).toLocaleDateString()}</span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <span style={{ color: t.type === 'income' ? '#22c55e' : '#ef4444', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto' }}>
+                      <span style={{ color: t.type === 'income' ? '#22c55e' : '#ef4444', fontWeight: 'bold', fontSize: '1rem' }}>
                         {t.type === 'income' ? '+' : '-'} LKR {t.amount.toLocaleString()}
                       </span>
                       <button onClick={() => openEditModal(t)} style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: '5px' }} title="Edit">
@@ -476,7 +479,7 @@ function App() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '20px', flexWrap: 'wrap' }}>
                   <button 
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
