@@ -29,6 +29,10 @@ function App() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   // Edit Modal States
   const [editingTx, setEditingTx] = useState(null);
   const [editTitle, setEditTitle] = useState('');
@@ -80,7 +84,6 @@ function App() {
     }
   };
 
-  // Add Transaction with Validation
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -133,7 +136,6 @@ function App() {
     setEditError('');
   };
 
-  // Update Transaction with Validation
   const handleUpdate = async (e) => {
     e.preventDefault();
     setEditError('');
@@ -198,6 +200,12 @@ function App() {
     const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase()) || t.category.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
+
+  // Pagination Logic
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTransactions = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
 
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -440,30 +448,55 @@ function App() {
           {filteredTransactions.length === 0 ? (
             <p style={{ color: '#94a3b8' }}>No transactions found.</p>
           ) : (
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {filteredTransactions.map((t) => (
-                <li key={t._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', marginBottom: '10px', background: '#0f172a', borderRadius: '10px', border: '1px solid #334155' }}>
-                  <div>
-                    <strong style={{ fontSize: '1.05rem' }}>{t.title}</strong>
-                    <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '3px' }}>
-                      <span style={{ background: '#334155', padding: '2px 8px', borderRadius: '4px', marginRight: '8px' }}>{t.category}</span>
-                      <span>{new Date(t.date).toLocaleDateString()}</span>
+            <>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {currentTransactions.map((t) => (
+                  <li key={t._id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', marginBottom: '10px', background: '#0f172a', borderRadius: '10px', border: '1px solid #334155' }}>
+                    <div>
+                      <strong style={{ fontSize: '1.05rem' }}>{t.title}</strong>
+                      <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginTop: '3px' }}>
+                        <span style={{ background: '#334155', padding: '2px 8px', borderRadius: '4px', marginRight: '8px' }}>{t.category}</span>
+                        <span>{new Date(t.date).toLocaleDateString()}</span>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                    <span style={{ color: t.type === 'income' ? '#22c55e' : '#ef4444', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                      {t.type === 'income' ? '+' : '-'} LKR {t.amount.toLocaleString()}
-                    </span>
-                    <button onClick={() => openEditModal(t)} style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: '5px' }} title="Edit">
-                      <Edit2 size={16} />
-                    </button>
-                    <button onClick={() => handleDelete(t._id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '5px' }} title="Delete">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                      <span style={{ color: t.type === 'income' ? '#22c55e' : '#ef4444', fontWeight: 'bold', fontSize: '1.1rem' }}>
+                        {t.type === 'income' ? '+' : '-'} LKR {t.amount.toLocaleString()}
+                      </span>
+                      <button onClick={() => openEditModal(t)} style={{ background: 'transparent', border: 'none', color: '#38bdf8', cursor: 'pointer', padding: '5px' }} title="Edit">
+                        <Edit2 size={16} />
+                      </button>
+                      <button onClick={() => handleDelete(t._id)} style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '5px' }} title="Delete">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '15px', marginTop: '20px' }}>
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    style={{ padding: '8px 14px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', opacity: currentPage === 1 ? 0.5 : 1 }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontSize: '0.9rem', color: '#94a3b8' }}>
+                    Page {currentPage} of {totalPages}
+                  </span>
+                  <button 
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    style={{ padding: '8px 14px', background: '#334155', color: '#fff', border: 'none', borderRadius: '6px', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', opacity: currentPage === totalPages ? 0.5 : 1 }}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
